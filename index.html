@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falstad to Circuitikz Converter</title>
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full viewport height */
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 80%; /* Limit the width of the container */
+            max-width: 800px; /* Set a max width */
+        }
+        textarea {
+            width: 200%;
+            height: 300px; /* Set a fixed height */
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            color: rgb(0, 0, 0);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <p>Welcome to Falsted to LaTeX converter!<br>
+        <br>
+        Included features are:<br>
+        - resistors<br>
+        - transistors<br>
+        - DC voltage<br>
+        - AC voltage<br>
+        - capacitors<br>
+        - Antennae<br>
+        - Inductors<br>
+        - Grounds<br>
+        - LEDs<br>
+        - Wires<br>
+        - Voltmeters<br>
+        - Switches<br>
+        - Diodes</p>
+
+
+    <div class="container">
+        <div>
+            <textarea id="falstadInput" placeholder="Paste Falstad circuit text here..."></textarea>
+        </div>
+
+        <div>
+            <button onclick="convertText()">Convert to Circuitikz</button>
+        </div>
+
+        <div>
+            <textarea id="circuitikzOutput" placeholder="Converted Circuitikz code will appear here..." readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        function convertText() {
+            const falstadText = document.getElementById('falstadInput').value;
+            const lines = falstadText.split('\n');
+            let circuitikzCode = "\\begin{circuitikz}\n";
+
+            lines.forEach(line => {
+                const parts = line.split(/\s+/);
+                if (parts.length === 0) return; // Skip empty lines
+
+                let x1 = parseFloat(parts[1]), y1 = parseFloat(parts[2]),
+                    x2 = parseFloat(parts[3]), y2 = parseFloat(parts[4]);
+                
+                x1 /= 50; x2 /= 50;
+                y1 = -y1 / 50;
+                y2 = -y2 / 50;
+
+                // Process components
+                if (parts[0] === 'w') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 'r') {
+                    let resistance = parts[6];
+                    circuitikzCode += `\\draw (${x1},${y1}) to[R=$\\Omega$, l=${resistance}$\\Omega$] (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 'c') {
+                    let capacitance = parseFloat(parts[6]);
+                    capacitance = round(capacitance, 6);
+                    circuitikzCode += `\\draw (${x1},${y1}) to[C=$\\mu$F, l=${capacitance*1000000}$\\mu F$] (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 'v') {
+                    let voltage = parts[8], frequency = parts[7];
+                    if (parts[6] === '1') {
+                        circuitikzCode += `\\draw (${x1},${y1}) to[voltage source, l=${voltage}$V$, ${frequency}Hz] (${x2},${y2});\n`;
+                    } else if (parts[6] === '0') {
+                        circuitikzCode += `\\draw (${x1},${y1}) to[battery, l=${voltage}$V$] (${x2},${y2});\n`;
+                    }
+                }
+
+                else if (parts[0] === 'l') {
+                    let inductance = parseFloat(parts[6]);
+                    inductance = round(inductance, 6);
+                    circuitikzCode += `\\draw (${x1},${y1}) to[inductor, l=${inductance*1000000}$\\mu H$] (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 's') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to[switch] (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 't') {
+                    if (x2 > x1 && y1 === y2) {
+                        circuitikzCode += `\\draw (${x2},${y2}) node[npn] {};\\draw (${x1},${y1}) to (${x2 - 0.85},${y2});\n`;
+                    } else if (x2 < x1 && y1 === y2) {
+                        circuitikzCode += `\\draw (${x2},${y2}) node[npn, rotate=180] {};\\draw (${x1},${y1}) to (${x2 + 0.85},${y2});\n`;
+                    }
+                }
+
+                else if (parts[0] === 'd') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to[diode] (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 'g') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to[ground] (${x2},${y2})node[ground]{};\n`;
+                }
+
+                else if (parts[0] === 'A') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to (${x2},${y2})node[antenna]{Ant};\n`;
+                }
+
+                else if (parts[0] === '162') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to[led] (${x2},${y2});\n`;
+                }
+
+                else if (parts[0] === 'p') {
+                    circuitikzCode += `\\draw (${x1},${y1}) to[voltmeter] (${x2},${y2});\n`;
+                }
+            });
+
+            circuitikzCode += "\\end{circuitikz}\n";
+
+            // Output to the result textarea
+            document.getElementById('circuitikzOutput').value = circuitikzCode;
+        }
+
+        function round(value, precision) {
+            return Number(Math.round(value + 'e' + precision) + 'e-' + precision);
+        }
+    </script>
+
+</body>
+</html>
